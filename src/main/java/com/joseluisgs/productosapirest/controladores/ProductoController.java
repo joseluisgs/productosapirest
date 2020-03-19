@@ -15,11 +15,11 @@ import java.util.List;
 @RequestMapping("/api") // Esta va a ser la raiz de donde escuchemos es decir http://localhost/api
 
 @RequiredArgsConstructor
-// Si ponemos esto no es necesario el @Autowired
+// Si ponemos esta anotación no es necesario el @Autowired, si lo ponemos no pasa nada,
 public class ProductoController {
 
 
-    //@Autowired // Realizamos la inyección de dependecias al repositorio
+    @Autowired // Realizamos la inyección de dependecias al repositorio, no es necesaria si ponemos la notación @RequiredArgsConstructor de lambok
     private ProductoRepositorio productoRepositorio;
 
 
@@ -29,8 +29,8 @@ public class ProductoController {
      */
     @GetMapping("/productos")
     public List<Producto> obetenerTodos() {
-        // Vamos a modificar este código
-        return null;
+        // Devolvemos todos
+        return productoRepositorio.findAll();
     }
 
 
@@ -41,8 +41,8 @@ public class ProductoController {
      */
     @GetMapping("/productos/{id}")
     public Producto obtenerProducto(@PathVariable Long id) {
-        // Vamos a modificar este código
-        return null;
+        // Devolvemos si existe
+        return productoRepositorio.findById(id).orElse(null);
     }
 
 
@@ -53,8 +53,8 @@ public class ProductoController {
      */
     @PostMapping("/productos")
     public Producto nuevoProducto(@RequestBody Producto nuevo) {
-        // Vamos a modificar este código
-        return null;
+        // Salvamos
+        return productoRepositorio.save(nuevo);
     }
 
     /**
@@ -65,19 +65,35 @@ public class ProductoController {
      */
     @PutMapping("/productos/{id}")
     public Producto editarProducto(@RequestBody Producto editar, @PathVariable Long id) {
-        // Vamos a modificar este código
-        return null;
+        // Si existe
+        if (productoRepositorio.existsById(id)) {
+            // Le ponemos el id que teníamos
+            editar.setId(id);
+            // Salvamos
+            return productoRepositorio.save(editar);
+        } else {
+            // Devolvemos null
+            return null;
+        }
     }
 
     /**
      * Borra un producto con un id espcífico
      * @param id id del producto a borrar
-     * @return producto borra
+     * @return producto borrado si existe
      */
     @DeleteMapping("/productos/{id}")
     public Producto borrarProducto(@PathVariable Long id) {
-        // Vamos a modificar este código
-        return null;
+        // Si existe
+        if (productoRepositorio.existsById(id)) {
+            // Lo encotramos
+            Producto result = productoRepositorio.findById(id).get();
+            // Lo borramos
+            productoRepositorio.deleteById(id);
+            return result;
+        } else
+            // devolvemos null
+            return null;
     }
 
 }
