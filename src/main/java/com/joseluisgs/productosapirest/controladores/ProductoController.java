@@ -4,7 +4,10 @@ package com.joseluisgs.productosapirest.controladores;
 import com.joseluisgs.productosapirest.dto.CreateProductoDTO;
 import com.joseluisgs.productosapirest.dto.ProductoDTO;
 import com.joseluisgs.productosapirest.dto.coverter.ProductoDTOConverter;
-import com.joseluisgs.productosapirest.modelos.Categoria;
+import com.joseluisgs.productosapirest.error.CategoriaNotFoundException;
+import com.joseluisgs.productosapirest.error.ProductoBadRequestException;
+import com.joseluisgs.productosapirest.error.ProductoNotFoundException;
+import com.joseluisgs.productosapirest.error.ProductosNotFoundException;
 import com.joseluisgs.productosapirest.modelos.Producto;
 import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
 import com.joseluisgs.productosapirest.repositorios.ProductoRepositorio;
@@ -44,7 +47,9 @@ public class ProductoController {
         // Actualizamos con ResponseEntity
         List<Producto> result = productoRepositorio.findAll();
         if (result.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            //return ResponseEntity.notFound().build();
+            // Con excepciones
+            throw new ProductosNotFoundException();
         } else {
             //return ResponseEntity.ok(result);
             // Hacemos el DTO para añadir la categoría
@@ -64,15 +69,22 @@ public class ProductoController {
      * @return 404 si no encuentra el producto, 200 y el producto si lo encuentra
      */
     @GetMapping("/productos/{id}")
-    public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {
+    //public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {
+    public Producto obtenerProducto(@PathVariable Long id) {
         // Devolvemos si existe
         //return productoRepositorio.findById(id).orElse(null);
-
+        /*
         Producto result = productoRepositorio.findById(id).orElse(null);
         if (result == null)
             return ResponseEntity.notFound().build();
         else
             return ResponseEntity.ok(result);
+
+         */
+
+        // Con manejo de excepciones, por eso devuelve un producto y cambia el tipo del método ResponseEntity<?> -> Producto
+        return productoRepositorio.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
     }
 
 
@@ -103,13 +115,19 @@ public class ProductoController {
 
         // Usando el DTO --segunda forma como un metodo del conversor y mapeo (esto último no es necesario)
 
-        Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
-        return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
-                .map( o ->{
-                    return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
-                }).orElseGet(()->{
-                    return ResponseEntity.notFound().build();
-                });
+        // Con manejo de excepciones
+        if(nuevo.getNombre().isEmpty())
+            throw new ProductoBadRequestException("Nombre", "Nombre vacío");
+        else if(nuevo.getPrecio()<0)
+            throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
+        else {
+
+            Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
+            return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
+                    .map(o -> {
+                        return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+                    }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
+        }
 
     }
 
@@ -122,7 +140,8 @@ public class ProductoController {
      * @return 200 Ok si la edición tiene éxito, 404 si no se encuentra el producto
      */
     @PutMapping("/productos/{id}")
-    public ResponseEntity<?> editarProducto(@RequestBody Producto editar, @PathVariable Long id) {
+    //public ResponseEntity<?> editarProducto(@RequestBody Producto editar, @PathVariable Long id) {
+    public Producto editarProducto(@RequestBody Producto editar, @PathVariable Long id) {
         /*
         // Si existe
         if (productoRepositorio.existsById(id)) {
@@ -138,6 +157,7 @@ public class ProductoController {
 
         // Utilizamos Stream de Java 8 con notacion funcional
         // Podriamos haber cambiado el código anterior
+        /*
         return productoRepositorio.findById(id).map(p -> {
             p.setNombre(editar.getNombre());
             p.setPrecio(editar.getPrecio());
@@ -145,6 +165,22 @@ public class ProductoController {
         }).orElseGet(() -> {
             return ResponseEntity.notFound().build();
         });
+        */
+
+        // Con manejo de excepciones, por eso devuelve un producto y cambia el tipo del método ResponseEntity<?> -> Producto
+
+        // Comprobamos que los campos no sean vacios antes o el precio negativo
+        if(editar.getNombre().isEmpty())
+            throw new ProductoBadRequestException("Nombre", "Nombre vacío");
+        else if(editar.getPrecio()<0)
+            throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
+        else {
+            return productoRepositorio.findById(id).map(p -> {
+                p.setNombre(editar.getNombre());
+                p.setPrecio(editar.getPrecio());
+                return productoRepositorio.save(p);
+            }).orElseThrow(() -> new ProductoNotFoundException(id));
+        }
 
     }
 
@@ -170,8 +206,15 @@ public class ProductoController {
          */
 
         // Se puede usar el código anterior incluyendo los RespnseEntity
-        productoRepositorio.deleteById(id);
+        //productoRepositorio.deleteById(id);
+        //return ResponseEntity.noContent().build();
+
+        // Con manejo de excepciones
+        Producto producto = productoRepositorio.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+        productoRepositorio.delete(producto);
         return ResponseEntity.noContent().build();
     }
+
 
 }
