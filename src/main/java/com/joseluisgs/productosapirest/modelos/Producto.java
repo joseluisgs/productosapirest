@@ -4,9 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 @Data
 // Nos hace automaticamente:  A shortcut for @ToString, @EqualsAndHashCode, @Getter on all fields, and @Setter on all non-final fields, and @RequiredArgsConstructor
@@ -25,5 +23,10 @@ public class Producto {
     // Si no ponemos nada, las calumnas se llamarán igual que estas propiedades
     private String nombre;
     private float precio;
+
+    // ENlazamos un producto tiene una categoría
+    @ManyToOne
+    @JoinColumn(name="categoria_id") // Así la vamos a llamar en la BB.DD
+    private Categoria categoria;
 
 }

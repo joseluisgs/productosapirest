@@ -6,7 +6,7 @@
 	},
 	"item": [
 		{
-			"name": "Listar producto",
+			"name": "Listar productos",
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -61,7 +61,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"nombre\": \"producto nuevo\",\n\t\"precio\": 123\n}",
+					"raw": "{\n        \"nombre\": \"Producto nuevo\",\n        \"precio\": 99.99,\n        \"categoriaId\": 2\n}",
 					"options": {
 						"raw": {
 							"language": "json"

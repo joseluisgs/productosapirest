@@ -1,7 +1,12 @@
 package com.joseluisgs.productosapirest.controladores;
 
 
+import com.joseluisgs.productosapirest.dto.CreateProductoDTO;
+import com.joseluisgs.productosapirest.dto.ProductoDTO;
+import com.joseluisgs.productosapirest.dto.coverter.ProductoDTOConverter;
+import com.joseluisgs.productosapirest.modelos.Categoria;
 import com.joseluisgs.productosapirest.modelos.Producto;
+import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
 import com.joseluisgs.productosapirest.repositorios.ProductoRepositorio;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 // Indicamos que es un controlador de tipo Rest
@@ -22,8 +28,9 @@ public class ProductoController {
 
 
     @Autowired // Realizamos la inyección de dependecias al repositorio, no es necesaria si ponemos la notación @RequiredArgsConstructor de lambok
-    private ProductoRepositorio productoRepositorio;
-
+    private final ProductoRepositorio productoRepositorio;
+    private final ProductoDTOConverter productoDTOConverter; // No es necesario el @Autowired por la notacion, pero pon el final
+    private final CategoriaRepositorio categoriaRepositorio; // No es necesario el @Autowired por la notacion, pero pon el final
 
     /**
      * Lista todos los productos
@@ -39,7 +46,14 @@ public class ProductoController {
         if (result.isEmpty()) {
             return ResponseEntity.notFound().build();
         } else {
-            return ResponseEntity.ok(result);
+            //return ResponseEntity.ok(result);
+            // Hacemos el DTO para añadir la categoría
+            // Devolvemos solo los datos que nos interesan
+            //Si no prueba a comentar esto y descomentar lo anterior y verás como obtienes demasaida info de categoria de manera anidada
+
+            List<ProductoDTO> dtoList = result.stream().map(productoDTOConverter::convertToDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(dtoList);
         }
     }
 
@@ -68,13 +82,38 @@ public class ProductoController {
      * @return 201 y el producto insertado
      */
     @PostMapping("/productos")
-    public ResponseEntity<?> nuevoProducto(@RequestBody Producto nuevo) {
+    //public ResponseEntity<?> nuevoProducto(@RequestBody Producto nuevo) {
+    public ResponseEntity<?> nuevoProducto(@RequestBody CreateProductoDTO nuevo) {
         // Salvamos
         //return productoRepositorio.save(nuevo);
 
-        Producto saved = productoRepositorio.save(nuevo);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        //Producto saved = productoRepositorio.save(nuevo);
+        //return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+
+        // Usando el DTO -- primera forma (manual)
+
+        /*
+        Producto nuevoProducto = new Producto();
+        nuevoProducto.setNombre(nuevo.getNombre());
+        nuevoProducto.setPrecio(nuevo.getPrecio());
+        Categoria categoria = categoriaRepositorio.findById(nuevo.getCategoriaId()).orElse(null);
+        nuevoProducto.setCategoria(categoria);
+        return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+        */
+
+        // Usando el DTO --segunda forma como un metodo del conversor y mapeo (esto último no es necesario)
+
+        Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
+        return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
+                .map( o ->{
+                    return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+                }).orElseGet(()->{
+                    return ResponseEntity.notFound().build();
+                });
+
     }
+
+
 
     /**
      * Editamos un producto
