@@ -8,6 +8,7 @@ Ejemplo de como hacer un API REST en Springboot
 ### Desarrollo
 * 19/03/2020: Inicio del proyecto y configuración del mismo: application.properties
 * 19/03/2020: Configuracion de pomxm. H2 y Lombok. Carga de datos en H2 y data.sql
+* 19/03/2020: Creación del Modelo, Repositorio DAO y Controlador REST de Producto. a nivel básico
 
 ##### Ejecución
 http://localhost:8080/
