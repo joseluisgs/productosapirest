@@ -3,7 +3,7 @@ Ejemplo de como hacer un API REST en Springboot
 
 ## Tecnologías
 * H2 como base de datos para que quien lo quiera no usar MySQL, luego lo cambiaré
-* Lombok para potenciar las anotaciones
+* Lombok para potenciar las anotaciones: https://projectlombok.org/features/all
 
 ### Desarrollo
 * 19/03/2020: Inicio del proyecto y configuración del mismo: application.properties
