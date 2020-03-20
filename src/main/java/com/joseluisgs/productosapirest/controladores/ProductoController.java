@@ -7,7 +7,6 @@ import com.joseluisgs.productosapirest.dto.coverter.ProductoDTOConverter;
 import com.joseluisgs.productosapirest.error.CategoriaNotFoundException;
 import com.joseluisgs.productosapirest.error.ProductoBadRequestException;
 import com.joseluisgs.productosapirest.error.ProductoNotFoundException;
-import com.joseluisgs.productosapirest.error.ProductosNotFoundException;
 import com.joseluisgs.productosapirest.modelos.Categoria;
 import com.joseluisgs.productosapirest.modelos.Producto;
 import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
@@ -17,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,13 +31,15 @@ import java.util.stream.Collectors;
 public class ProductoController {
 
 
-    @Autowired // Realizamos la inyección de dependecias al repositorio, no es necesaria si ponemos la notación @RequiredArgsConstructor de lambok
+    @Autowired
+    // Realizamos la inyección de dependecias al repositorio, no es necesaria si ponemos la notación @RequiredArgsConstructor de lambok
     private final ProductoRepositorio productoRepositorio;
     private final ProductoDTOConverter productoDTOConverter; // No es necesario el @Autowired por la notacion, pero pon el final
     private final CategoriaRepositorio categoriaRepositorio; // No es necesario el @Autowired por la notacion, pero pon el final
 
     /**
      * Lista todos los productos
+     *
      * @return 404 si no hay productos, 200 y lista de productos si hay uno o más
      */
     @GetMapping("/productos")
@@ -49,8 +51,10 @@ public class ProductoController {
         List<Producto> result = productoRepositorio.findAll();
         if (result.isEmpty()) {
             //return ResponseEntity.notFound().build();
-            // Con excepciones
-            throw new ProductosNotFoundException();
+            // Con excepciones propias
+            // throw new ProductosNotFoundException();
+            // Con response Status
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay productos registrados");
         } else {
             //return ResponseEntity.ok(result);
             // Hacemos el DTO para añadir la categoría
@@ -66,6 +70,7 @@ public class ProductoController {
 
     /**
      * Obtiene un producto con un id específico
+     *
      * @param id id del producto
      * @return 404 si no encuentra el producto, 200 y el producto si lo encuentra
      */
@@ -84,13 +89,22 @@ public class ProductoController {
          */
 
         // Con manejo de excepciones, por eso devuelve un producto y cambia el tipo del método ResponseEntity<?> -> Producto
-        return productoRepositorio.findById(id)
-                .orElseThrow(() -> new ProductoNotFoundException(id));
+        //return productoRepositorio.findById(id)
+        //       .orElseThrow(() -> new ProductoNotFoundException(id));
+
+        // Excepciones con ResponseStatus
+        try {
+            return productoRepositorio.findById(id)
+                    .orElseThrow(() -> new ProductoNotFoundException(id));
+        } catch (ProductoNotFoundException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
+        }
     }
 
 
     /**
      * Insertamos un nuevo producto
+     *
      * @param nuevo nuevo producto a insertar
      * @return 201 y el producto insertado
      */
@@ -117,32 +131,39 @@ public class ProductoController {
         // Usando el DTO --segunda forma como un metodo del conversor y mapeo (esto último no es necesario)
 
         // Con manejo de excepciones
-        if(nuevo.getNombre().isEmpty())
-            throw new ProductoBadRequestException("Nombre", "Nombre vacío");
-        else if(nuevo.getPrecio()<0)
-            throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
-        else {
-            /**
-             Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
-             return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
-             .map(o -> {
-             return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
-             }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
-             */
-            Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo);
-            Categoria categoria = categoriaRepositorio.findById(nuevo.getCategoriaId()).orElseThrow(() -> new CategoriaNotFoundException(nuevo.getCategoriaId()));
-            nuevoProducto.setCategoria(categoria);
-            return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+        // Response Status con el try/catch
+        try {
+            if (nuevo.getNombre().isEmpty())
+                throw new ProductoBadRequestException("Nombre", "Nombre vacío");
+            else if (nuevo.getPrecio() < 0)
+                throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
+            else {
+                /**
+                 Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
+                 return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
+                 .map(o -> {
+                 return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+                 }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
+                 */
+
+                Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo);
+                Categoria categoria = categoriaRepositorio.findById(nuevo.getCategoriaId()).orElseThrow(() -> new CategoriaNotFoundException(nuevo.getCategoriaId()));
+                nuevoProducto.setCategoria(categoria);
+                return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+
+            }
+        } catch (ProductoNotFoundException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
         }
 
     }
 
 
-
     /**
      * Editamos un producto
+     *
      * @param editar producto a editar
-     * @param id id del producto a editar
+     * @param id     id del producto a editar
      * @return 200 Ok si la edición tiene éxito, 404 si no se encuentra el producto
      */
     @PutMapping("/productos/{id}")
@@ -193,6 +214,7 @@ public class ProductoController {
 
     /**
      * Borra un producto con un id espcífico
+     *
      * @param id id del producto a borrar
      * @return Código 204 sin contenido
      */
