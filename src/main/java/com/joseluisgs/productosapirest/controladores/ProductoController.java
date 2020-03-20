@@ -42,6 +42,9 @@ public class ProductoController {
      *
      * @return 404 si no hay productos, 200 y lista de productos si hay uno o más
      */
+    @CrossOrigin(origins = "http://localhost:8080")
+    // Indicamos sobre que puerto u orignes dejamos que actue (navegador) En nuestroc aso no habría problemas
+    // Pero es bueno tenerlo en cuenta si tenemos en otro serviror una app en angular o similar
     @GetMapping("/productos")
     public ResponseEntity<?> obetenerTodos() {
         // Devolvemos todos
