@@ -1,11 +1,13 @@
 package com.joseluisgs.productosapirest.controladores;
 
 
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.joseluisgs.productosapirest.dto.CreateProductoDTO;
 import com.joseluisgs.productosapirest.dto.ProductoDTO;
 import com.joseluisgs.productosapirest.dto.coverter.ProductoDTOConverter;
-import com.joseluisgs.productosapirest.error.*;
+import com.joseluisgs.productosapirest.error.CategoriaNotFoundException;
+import com.joseluisgs.productosapirest.error.ProductoBadRequestException;
+import com.joseluisgs.productosapirest.error.ProductoNotFoundException;
+import com.joseluisgs.productosapirest.error.ProductosNotFoundException;
 import com.joseluisgs.productosapirest.modelos.Categoria;
 import com.joseluisgs.productosapirest.modelos.Producto;
 import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
@@ -16,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -175,11 +176,12 @@ public class ProductoController {
         // Con manejo de excepciones, por eso devuelve un producto y cambia el tipo del método ResponseEntity<?> -> Producto
 
         // Comprobamos que los campos no sean vacios antes o el precio negativo
-        if(editar.getNombre().isEmpty())
+        if (editar.getNombre().isEmpty())
             throw new ProductoBadRequestException("Nombre", "Nombre vacío");
-        else if(editar.getPrecio()<0)
+        else if (editar.getPrecio() <= 0)
             throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
         else {
+            // Se puede hacer con su asignaciones normales sin usar map, mira nuevo
             return productoRepositorio.findById(id).map(p -> {
                 p.setNombre(editar.getNombre());
                 p.setPrecio(editar.getPrecio());
@@ -221,6 +223,9 @@ public class ProductoController {
         return ResponseEntity.noContent().build();
     }
 
+        /*
+    // Nos los llevamos a GlobalCotrollerAdvice para poder usarlos en distintos controladores
+
     // Excepciones con HandlerException.
     // En vez de hacer el tratamiento por defecto cuando salta la excepción idncada se viene a este
 
@@ -243,6 +248,8 @@ public class ProductoController {
         apiError.setMensaje(ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
     }
+
+
 
     // Categoría no encotrada
     @ExceptionHandler(CategoriaNotFoundException.class)
@@ -274,5 +281,7 @@ public class ProductoController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
     }
 
+
+     */
 
 }
