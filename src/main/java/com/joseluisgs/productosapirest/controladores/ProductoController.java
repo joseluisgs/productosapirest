@@ -42,9 +42,12 @@ public class ProductoController {
      *
      * @return 404 si no hay productos, 200 y lista de productos si hay uno o más
      */
-    @CrossOrigin(origins = "http://localhost:8080")
-    // Indicamos sobre que puerto u orignes dejamos que actue (navegador) En nuestroc aso no habría problemas
+
+    @CrossOrigin(origins = "http://localhost:8888") //
+    // Indicamos sobre que puerto u orignes dejamos que actue (navegador) En nuestro caso no habría problemas
     // Pero es bueno tenerlo en cuenta si tenemos en otro serviror una app en angular o similar
+    // Pero es inviable para API consumida por muchos terceros. // Debes probar con un cliente desde ese puerto
+    // Mejor hacer un filtro, ver MyConfig.java
     @GetMapping("/productos")
     public ResponseEntity<?> obetenerTodos() {
         // Devolvemos todos
