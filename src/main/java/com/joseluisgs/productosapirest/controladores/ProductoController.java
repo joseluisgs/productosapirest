@@ -1,13 +1,12 @@
 package com.joseluisgs.productosapirest.controladores;
 
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.joseluisgs.productosapirest.dto.CreateProductoDTO;
 import com.joseluisgs.productosapirest.dto.ProductoDTO;
 import com.joseluisgs.productosapirest.dto.coverter.ProductoDTOConverter;
-import com.joseluisgs.productosapirest.error.CategoriaNotFoundException;
-import com.joseluisgs.productosapirest.error.ProductoBadRequestException;
-import com.joseluisgs.productosapirest.error.ProductoNotFoundException;
-import com.joseluisgs.productosapirest.error.ProductosNotFoundException;
+import com.joseluisgs.productosapirest.error.*;
+import com.joseluisgs.productosapirest.modelos.Categoria;
 import com.joseluisgs.productosapirest.modelos.Producto;
 import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
 import com.joseluisgs.productosapirest.repositorios.ProductoRepositorio;
@@ -17,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -121,12 +121,17 @@ public class ProductoController {
         else if(nuevo.getPrecio()<0)
             throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
         else {
-
-            Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
-            return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
-                    .map(o -> {
-                        return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
-                    }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
+            /**
+             Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
+             return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
+             .map(o -> {
+             return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+             }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
+             */
+            Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo);
+            Categoria categoria = categoriaRepositorio.findById(nuevo.getCategoriaId()).orElseThrow(() -> new CategoriaNotFoundException(nuevo.getCategoriaId()));
+            nuevoProducto.setCategoria(categoria);
+            return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
         }
 
     }
@@ -214,6 +219,59 @@ public class ProductoController {
                 .orElseThrow(() -> new ProductoNotFoundException(id));
         productoRepositorio.delete(producto);
         return ResponseEntity.noContent().build();
+    }
+
+    // Excepciones con HandlerException.
+    // En vez de hacer el tratamiento por defecto cuando salta la excepción idncada se viene a este
+
+    // Producto no encotrado
+    @ExceptionHandler(ProductoNotFoundException.class)
+    public ResponseEntity<ApiError> handleProductoNoEncontrado(ProductoNotFoundException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+    }
+
+    // Lista de productos no encontradas
+    @ExceptionHandler(ProductosNotFoundException.class)
+    public ResponseEntity<ApiError> handleProductosNoEncontrado(ProductosNotFoundException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+    }
+
+    // Categoría no encotrada
+    @ExceptionHandler(CategoriaNotFoundException.class)
+    public ResponseEntity<ApiError> handleCategoriaNoEncontrado(CategoriaNotFoundException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+    }
+
+    @ExceptionHandler(ProductoBadRequestException.class)
+    public ResponseEntity<ApiError> handleProductoPeticionIncorrecta(ProductoBadRequestException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
+    }
+
+
+    // Formato de Json a la hora de pasarle datos a la API
+    @ExceptionHandler(JsonMappingException.class)
+    public ResponseEntity<ApiError> handleJsonMappingException(JsonMappingException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.BAD_REQUEST);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
     }
 
 
