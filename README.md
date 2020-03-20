@@ -12,7 +12,7 @@ Ejemplo de como hacer un API REST en Springboot
 * 19/03/2020: Ficheros de consulta de Postman. Controlador: ResponseEntity
 * 19/03/2020: DTO de Objeto con ModeloMapper. Trabajando con Productos y Categorías
 * 20/03/2020: Manejo de Errores con: ExceptionHandler, GlobalControllerAdvice, ResponseEntityExceptionHandler,  ResponseStatusException
-
+* 20/03/2020: CRUD de Categoria
 
 ##### Ejecución
 http://localhost:8080/
