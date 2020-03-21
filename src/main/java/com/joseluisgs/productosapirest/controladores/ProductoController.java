@@ -11,12 +11,15 @@ import com.joseluisgs.productosapirest.modelos.Categoria;
 import com.joseluisgs.productosapirest.modelos.Producto;
 import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
 import com.joseluisgs.productosapirest.repositorios.ProductoRepositorio;
+import com.joseluisgs.productosapirest.upload.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,6 +39,7 @@ public class ProductoController {
     private final ProductoRepositorio productoRepositorio;
     private final ProductoDTOConverter productoDTOConverter; // No es necesario el @Autowired por la notacion, pero pon el final
     private final CategoriaRepositorio categoriaRepositorio; // No es necesario el @Autowired por la notacion, pero pon el final
+    private final StorageService storageService; // No es necesario el @Autowired por la notación
 
     /**
      * Lista todos los productos
@@ -116,7 +120,10 @@ public class ProductoController {
      */
     @PostMapping("/productos")
     //public ResponseEntity<?> nuevoProducto(@RequestBody Producto nuevo) {
-    public ResponseEntity<?> nuevoProducto(@RequestBody CreateProductoDTO nuevo) {
+    //public ResponseEntity<?> nuevoProducto(@RequestBody CreateProductoDTO nuevo) {
+    // Para ficheros usamos, Resuqest part, porque lo tenemos dividido en partes
+    public ResponseEntity<?> nuevoProducto(@RequestPart("nuevo") CreateProductoDTO nuevo,
+                                           @RequestPart("file") MultipartFile file) {
         // Salvamos
         //return productoRepositorio.save(nuevo);
 
@@ -138,28 +145,41 @@ public class ProductoController {
 
         // Con manejo de excepciones
         // Response Status con el try/catch
+
+        // Almacenamos el fichero y obtenemos su URL
+        String urlImagen = null;
+
         try {
+
+            // Comprobaciones
             if (nuevo.getNombre().isEmpty())
                 throw new ProductoBadRequestException("Nombre", "Nombre vacío");
-            else if (nuevo.getPrecio() < 0)
+            if (nuevo.getPrecio() < 0)
                 throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
-            else {
-                /**
-                 Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
-                 return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
-                 .map(o -> {
-                 return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
-                 }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
-                 */
 
-                Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo);
-                Categoria categoria = categoriaRepositorio.findById(nuevo.getCategoriaId()).orElseThrow(() -> new CategoriaNotFoundException(nuevo.getCategoriaId()));
-                nuevoProducto.setCategoria(categoria);
-                return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
-
+            if (!file.isEmpty()) {
+                String imagen = storageService.store(file);
+                urlImagen = MvcUriComponentsBuilder
+                        // El segundo argumento es necesario solo cuando queremos obtener la imagen
+                        // En este caso tan solo necesitamos obtener la URL
+                        .fromMethodName(FicherosController.class, "serveFile", imagen, null)
+                        .build().toUriString();
             }
+            /**
+             Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
+             return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
+             .map(o -> {
+             return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+             }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
+             */
+
+            Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo);
+            Categoria categoria = categoriaRepositorio.findById(nuevo.getCategoriaId()).orElseThrow(() -> new CategoriaNotFoundException(nuevo.getCategoriaId()));
+            nuevoProducto.setCategoria(categoria);
+            nuevoProducto.setImagen(urlImagen); // el fichero asociado, imagen
+            return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
         } catch (ProductoNotFoundException ex) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
         }
 
     }
