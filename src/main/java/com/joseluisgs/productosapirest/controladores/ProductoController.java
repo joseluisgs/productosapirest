@@ -4,18 +4,28 @@ package com.joseluisgs.productosapirest.controladores;
 import com.joseluisgs.productosapirest.dto.CreateProductoDTO;
 import com.joseluisgs.productosapirest.dto.ProductoDTO;
 import com.joseluisgs.productosapirest.dto.coverter.ProductoDTOConverter;
+import com.joseluisgs.productosapirest.error.ApiError;
 import com.joseluisgs.productosapirest.error.CategoriaNotFoundException;
 import com.joseluisgs.productosapirest.error.ProductoBadRequestException;
 import com.joseluisgs.productosapirest.error.ProductoNotFoundException;
-import com.joseluisgs.productosapirest.error.ProductosNotFoundException;
+import com.joseluisgs.productosapirest.modelos.Categoria;
 import com.joseluisgs.productosapirest.modelos.Producto;
 import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
 import com.joseluisgs.productosapirest.repositorios.ProductoRepositorio;
+import com.joseluisgs.productosapirest.upload.StorageService;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,15 +40,24 @@ import java.util.stream.Collectors;
 public class ProductoController {
 
 
-    @Autowired // Realizamos la inyección de dependecias al repositorio, no es necesaria si ponemos la notación @RequiredArgsConstructor de lambok
+    @Autowired
+    // Realizamos la inyección de dependecias al repositorio, no es necesaria si ponemos la notación @RequiredArgsConstructor de lambok
     private final ProductoRepositorio productoRepositorio;
     private final ProductoDTOConverter productoDTOConverter; // No es necesario el @Autowired por la notacion, pero pon el final
     private final CategoriaRepositorio categoriaRepositorio; // No es necesario el @Autowired por la notacion, pero pon el final
+    private final StorageService storageService; // No es necesario el @Autowired por la notación
 
     /**
      * Lista todos los productos
+     *
      * @return 404 si no hay productos, 200 y lista de productos si hay uno o más
      */
+
+    //@CrossOrigin(origins = "http://localhost:8888") // No es necesario porque ya tenemos las conf globales MyConfig
+    // Indicamos sobre que puerto u orignes dejamos que actue (navegador) En nuestro caso no habría problemas
+    // Pero es bueno tenerlo en cuenta si tenemos en otro serviror una app en angular o similar
+    // Pero es inviable para API consumida por muchos terceros. // Debes probar con un cliente desde ese puerto
+    // Mejor hacer un filtro, ver MyConfig.java
     @GetMapping("/productos")
     public ResponseEntity<?> obetenerTodos() {
         // Devolvemos todos
@@ -48,8 +67,10 @@ public class ProductoController {
         List<Producto> result = productoRepositorio.findAll();
         if (result.isEmpty()) {
             //return ResponseEntity.notFound().build();
-            // Con excepciones
-            throw new ProductosNotFoundException();
+            // Con excepciones propias
+            // throw new ProductosNotFoundException();
+            // Con response Status
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay productos registrados");
         } else {
             //return ResponseEntity.ok(result);
             // Hacemos el DTO para añadir la categoría
@@ -65,12 +86,19 @@ public class ProductoController {
 
     /**
      * Obtiene un producto con un id específico
+     *
      * @param id id del producto
      * @return 404 si no encuentra el producto, 200 y el producto si lo encuentra
      */
+    @ApiOperation(value = "Obtener un producto por su ID", notes = "Provee un mecanismo para obtener todos los datos de un producto por su ID")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "OK", response = Producto.class),
+            @ApiResponse(code = 404, message = "Not Found", response = ApiError.class),
+            @ApiResponse(code = 500, message = "Internal Server Error", response = ApiError.class)
+    })
     @GetMapping("/productos/{id}")
     //public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {
-    public Producto obtenerProducto(@PathVariable Long id) {
+    public Producto obtenerProducto(@ApiParam(value = "ID del producto", required = true, type = "long") @PathVariable Long id) {
         // Devolvemos si existe
         //return productoRepositorio.findById(id).orElse(null);
         /*
@@ -83,19 +111,41 @@ public class ProductoController {
          */
 
         // Con manejo de excepciones, por eso devuelve un producto y cambia el tipo del método ResponseEntity<?> -> Producto
-        return productoRepositorio.findById(id)
-                .orElseThrow(() -> new ProductoNotFoundException(id));
+        //return productoRepositorio.findById(id)
+        //       .orElseThrow(() -> new ProductoNotFoundException(id));
+
+        // Excepciones con ResponseStatus
+        try {
+            return productoRepositorio.findById(id)
+                    .orElseThrow(() -> new ProductoNotFoundException(id));
+        } catch (ProductoNotFoundException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
+        }
     }
 
 
     /**
      * Insertamos un nuevo producto
+     *
      * @param nuevo nuevo producto a insertar
      * @return 201 y el producto insertado
      */
-    @PostMapping("/productos")
+    @ApiOperation(value = "Crear un nuevo Producto", notes = "Provee la operación para crear un nuevo Producto a partir de un CreateProductoDto y devuelve el objeto creado")
+    @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "OK", response = Producto.class),
+            @ApiResponse(code = 400, message = "Bad Request", response = ApiError.class),
+            @ApiResponse(code = 500, message = "Internal Server Error", response = ApiError.class)
+    })
+    @PostMapping(value = "/producto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    //Aunque no es obligatorio, podemos indicar que se consume multipart/form-data
     //public ResponseEntity<?> nuevoProducto(@RequestBody Producto nuevo) {
-    public ResponseEntity<?> nuevoProducto(@RequestBody CreateProductoDTO nuevo) {
+    //public ResponseEntity<?> nuevoProducto(@RequestBody CreateProductoDTO nuevo) {
+    // Para ficheros usamos, Resuqest part, porque lo tenemos dividido en partes
+    public ResponseEntity<?> nuevoProducto(
+            @ApiParam(value = "Datos del nuevo producto", type = "CreateProductoDTO.class")
+            @RequestPart("nuevo") CreateProductoDTO nuevo,
+            @ApiParam(value = "imagen para el nuevo producto", type = "application/octet-stream")
+            @RequestPart("file") MultipartFile file) {
         // Salvamos
         //return productoRepositorio.save(nuevo);
 
@@ -116,27 +166,52 @@ public class ProductoController {
         // Usando el DTO --segunda forma como un metodo del conversor y mapeo (esto último no es necesario)
 
         // Con manejo de excepciones
-        if(nuevo.getNombre().isEmpty())
-            throw new ProductoBadRequestException("Nombre", "Nombre vacío");
-        else if(nuevo.getPrecio()<0)
-            throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
-        else {
+        // Response Status con el try/catch
 
-            Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
-            return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
-                    .map(o -> {
-                        return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
-                    }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
+        // Almacenamos el fichero y obtenemos su URL
+        String urlImagen = null;
+
+        try {
+
+            // Comprobaciones
+            if (nuevo.getNombre().isEmpty())
+                throw new ProductoBadRequestException("Nombre", "Nombre vacío");
+            if (nuevo.getPrecio() < 0)
+                throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
+
+            if (!file.isEmpty()) {
+                String imagen = storageService.store(file);
+                urlImagen = MvcUriComponentsBuilder
+                        // El segundo argumento es necesario solo cuando queremos obtener la imagen
+                        // En este caso tan solo necesitamos obtener la URL
+                        .fromMethodName(FicherosController.class, "serveFile", imagen, null)
+                        .build().toUriString();
+            }
+            /**
+             Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo); // Esto si es interesante
+             return categoriaRepositorio.findById(nuevoProducto.getCategoria().getId())
+             .map(o -> {
+             return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+             }).orElseThrow(() -> new CategoriaNotFoundException(nuevoProducto.getCategoria().getId()));
+             */
+
+            Producto nuevoProducto = productoDTOConverter.convertToProducto(nuevo);
+            Categoria categoria = categoriaRepositorio.findById(nuevo.getCategoriaId()).orElseThrow(() -> new CategoriaNotFoundException(nuevo.getCategoriaId()));
+            nuevoProducto.setCategoria(categoria);
+            nuevoProducto.setImagen(urlImagen); // el fichero asociado, imagen
+            return ResponseEntity.status(HttpStatus.CREATED).body(productoRepositorio.save(nuevoProducto));
+        } catch (ProductoNotFoundException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
         }
 
     }
 
 
-
     /**
      * Editamos un producto
+     *
      * @param editar producto a editar
-     * @param id id del producto a editar
+     * @param id     id del producto a editar
      * @return 200 Ok si la edición tiene éxito, 404 si no se encuentra el producto
      */
     @PutMapping("/productos/{id}")
@@ -170,11 +245,12 @@ public class ProductoController {
         // Con manejo de excepciones, por eso devuelve un producto y cambia el tipo del método ResponseEntity<?> -> Producto
 
         // Comprobamos que los campos no sean vacios antes o el precio negativo
-        if(editar.getNombre().isEmpty())
+        if (editar.getNombre().isEmpty())
             throw new ProductoBadRequestException("Nombre", "Nombre vacío");
-        else if(editar.getPrecio()<0)
+        else if (editar.getPrecio() <= 0)
             throw new ProductoBadRequestException("Precio", "Precio no puede ser negativo");
         else {
+            // Se puede hacer con su asignaciones normales sin usar map, mira nuevo
             return productoRepositorio.findById(id).map(p -> {
                 p.setNombre(editar.getNombre());
                 p.setPrecio(editar.getPrecio());
@@ -186,6 +262,7 @@ public class ProductoController {
 
     /**
      * Borra un producto con un id espcífico
+     *
      * @param id id del producto a borrar
      * @return Código 204 sin contenido
      */
@@ -216,5 +293,65 @@ public class ProductoController {
         return ResponseEntity.noContent().build();
     }
 
+        /*
+    // Nos los llevamos a GlobalCotrollerAdvice para poder usarlos en distintos controladores
+
+    // Excepciones con HandlerException.
+    // En vez de hacer el tratamiento por defecto cuando salta la excepción idncada se viene a este
+
+    // Producto no encotrado
+    @ExceptionHandler(ProductoNotFoundException.class)
+    public ResponseEntity<ApiError> handleProductoNoEncontrado(ProductoNotFoundException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+    }
+
+    // Lista de productos no encontradas
+    @ExceptionHandler(ProductosNotFoundException.class)
+    public ResponseEntity<ApiError> handleProductosNoEncontrado(ProductosNotFoundException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+    }
+
+
+
+    // Categoría no encotrada
+    @ExceptionHandler(CategoriaNotFoundException.class)
+    public ResponseEntity<ApiError> handleCategoriaNoEncontrado(CategoriaNotFoundException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+    }
+
+    @ExceptionHandler(ProductoBadRequestException.class)
+    public ResponseEntity<ApiError> handleProductoPeticionIncorrecta(ProductoBadRequestException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.NOT_FOUND);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
+    }
+
+
+    // Formato de Json a la hora de pasarle datos a la API
+    @ExceptionHandler(JsonMappingException.class)
+    public ResponseEntity<ApiError> handleJsonMappingException(JsonMappingException ex) {
+        ApiError apiError = new ApiError();
+        apiError.setEstado(HttpStatus.BAD_REQUEST);
+        apiError.setFecha(LocalDateTime.now());
+        apiError.setMensaje(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
+    }
+
+
+     */
 
 }

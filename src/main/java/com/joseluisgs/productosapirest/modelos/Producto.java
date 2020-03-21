@@ -1,5 +1,6 @@
 package com.joseluisgs.productosapirest.modelos;
 
+import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,15 +19,25 @@ public class Producto {
 
     @Id  // Es el campo ID
     @GeneratedValue // Autoincrementa el valor
+    @ApiModelProperty(value = "ID del Producto", dataType = "long", example = "1", position = 1)
     private Long id;
 
     // Si no ponemos nada, las calumnas se llamarán igual que estas propiedades
+    @ApiModelProperty(value = "Nombre del producto", dataType = "String", example = "Jamón ibérico de bellota", position = 2)
     private String nombre;
+
+    // Precio
+    @ApiModelProperty(value = "Precio del producto", dataType = "float", example = "253.27", position = 3)
     private float precio;
+
+    // Imagen
+    @ApiModelProperty(value = "Imagen del producto", dataType = "String", example = "http://www.midominio.com/files/12345-imagen.jpg", position = 4)
+    private String imagen;
 
     // ENlazamos un producto tiene una categoría
     @ManyToOne
-    @JoinColumn(name="categoria_id") // Así la vamos a llamar en la BB.DD
+    @JoinColumn(name = "categoria_id") // Así la vamos a llamar en la BB.DD
+    @ApiModelProperty(value = "Categoría del producto", dataType = "Categoria", position = 5)
     private Categoria categoria;
 
 }
