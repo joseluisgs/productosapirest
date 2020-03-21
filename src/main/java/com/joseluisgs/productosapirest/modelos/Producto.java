@@ -24,9 +24,12 @@ public class Producto {
     private String nombre;
     private float precio;
 
+    // Imagen
+    private String imagen;
+
     // ENlazamos un producto tiene una categoría
     @ManyToOne
-    @JoinColumn(name="categoria_id") // Así la vamos a llamar en la BB.DD
+    @JoinColumn(name = "categoria_id") // Así la vamos a llamar en la BB.DD
     private Categoria categoria;
 
 }
