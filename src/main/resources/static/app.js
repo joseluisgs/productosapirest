@@ -14,6 +14,7 @@ $(document).ready(function () {
                 html += '<td>' + value.id + '</td>';
                 html += '<td>' + value.nombre + '</td>';
                 html += '<td>' + value.categoriaNombre + '</td>';
+                html += '<td><img src=' + value.imagen + ' class="img-rounded" style="width:150px"></td>';
                 html += '</tr>';
             });
             $("#productos-table-body").append(html);
