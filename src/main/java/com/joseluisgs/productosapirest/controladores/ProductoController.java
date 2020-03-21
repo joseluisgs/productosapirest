@@ -4,6 +4,7 @@ package com.joseluisgs.productosapirest.controladores;
 import com.joseluisgs.productosapirest.dto.CreateProductoDTO;
 import com.joseluisgs.productosapirest.dto.ProductoDTO;
 import com.joseluisgs.productosapirest.dto.coverter.ProductoDTOConverter;
+import com.joseluisgs.productosapirest.error.ApiError;
 import com.joseluisgs.productosapirest.error.CategoriaNotFoundException;
 import com.joseluisgs.productosapirest.error.ProductoBadRequestException;
 import com.joseluisgs.productosapirest.error.ProductoNotFoundException;
@@ -12,9 +13,14 @@ import com.joseluisgs.productosapirest.modelos.Producto;
 import com.joseluisgs.productosapirest.repositorios.CategoriaRepositorio;
 import com.joseluisgs.productosapirest.repositorios.ProductoRepositorio;
 import com.joseluisgs.productosapirest.upload.StorageService;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -47,7 +53,7 @@ public class ProductoController {
      * @return 404 si no hay productos, 200 y lista de productos si hay uno o más
      */
 
-    @CrossOrigin(origins = "http://localhost:8888") //
+    //@CrossOrigin(origins = "http://localhost:8888") // No es necesario porque ya tenemos las conf globales MyConfig
     // Indicamos sobre que puerto u orignes dejamos que actue (navegador) En nuestro caso no habría problemas
     // Pero es bueno tenerlo en cuenta si tenemos en otro serviror una app en angular o similar
     // Pero es inviable para API consumida por muchos terceros. // Debes probar con un cliente desde ese puerto
@@ -84,9 +90,15 @@ public class ProductoController {
      * @param id id del producto
      * @return 404 si no encuentra el producto, 200 y el producto si lo encuentra
      */
+    @ApiOperation(value = "Obtener un producto por su ID", notes = "Provee un mecanismo para obtener todos los datos de un producto por su ID")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "OK", response = Producto.class),
+            @ApiResponse(code = 404, message = "Not Found", response = ApiError.class),
+            @ApiResponse(code = 500, message = "Internal Server Error", response = ApiError.class)
+    })
     @GetMapping("/productos/{id}")
     //public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {
-    public Producto obtenerProducto(@PathVariable Long id) {
+    public Producto obtenerProducto(@ApiParam(value = "ID del producto", required = true, type = "long") @PathVariable Long id) {
         // Devolvemos si existe
         //return productoRepositorio.findById(id).orElse(null);
         /*
@@ -118,12 +130,22 @@ public class ProductoController {
      * @param nuevo nuevo producto a insertar
      * @return 201 y el producto insertado
      */
-    @PostMapping("/productos")
+    @ApiOperation(value = "Crear un nuevo Producto", notes = "Provee la operación para crear un nuevo Producto a partir de un CreateProductoDto y devuelve el objeto creado")
+    @ApiResponses(value = {
+            @ApiResponse(code = 201, message = "OK", response = Producto.class),
+            @ApiResponse(code = 400, message = "Bad Request", response = ApiError.class),
+            @ApiResponse(code = 500, message = "Internal Server Error", response = ApiError.class)
+    })
+    @PostMapping(value = "/producto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    //Aunque no es obligatorio, podemos indicar que se consume multipart/form-data
     //public ResponseEntity<?> nuevoProducto(@RequestBody Producto nuevo) {
     //public ResponseEntity<?> nuevoProducto(@RequestBody CreateProductoDTO nuevo) {
     // Para ficheros usamos, Resuqest part, porque lo tenemos dividido en partes
-    public ResponseEntity<?> nuevoProducto(@RequestPart("nuevo") CreateProductoDTO nuevo,
-                                           @RequestPart("file") MultipartFile file) {
+    public ResponseEntity<?> nuevoProducto(
+            @ApiParam(value = "Datos del nuevo producto", type = "CreateProductoDTO.class")
+            @RequestPart("nuevo") CreateProductoDTO nuevo,
+            @ApiParam(value = "imagen para el nuevo producto", type = "application/octet-stream")
+            @RequestPart("file") MultipartFile file) {
         // Salvamos
         //return productoRepositorio.save(nuevo);
 

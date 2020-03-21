@@ -9,6 +9,6 @@ public class ProductoBadRequestException extends RuntimeException {
     private static final long serialVersionUID = 43876691117560211L;
 
     public ProductoBadRequestException(String campo, String error) {
-        super("Existe un error en el campo: " +campo+ " Error: "+ error);
+        super("Existe un error en el campo: " + campo + " Error: " + error);
     }
 }

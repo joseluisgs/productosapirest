@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 
-
 // Los DTO nos sirven entre otras cosas para filtrar información de una o varias clases, podría ser similar a las vistas
 @Getter
 @Setter
