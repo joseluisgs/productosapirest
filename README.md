@@ -14,6 +14,7 @@ Ejemplo de como hacer un API REST en Springboot
 * 20/03/2020: Manejo de Errores con: ExceptionHandler, GlobalControllerAdvice, ResponseEntityExceptionHandler,  ResponseStatusException
 * 20/03/2020: CRUD de Categoria
 * 20/03/2020: CORS: Cliente Ajax, ejecutable desde http://localhost:8080/ Configuración de seguridad en metodo y global
+* 21/03/2020: Sistema de ficheros.
 
 ##### Ejecución
 http://localhost:8080/
